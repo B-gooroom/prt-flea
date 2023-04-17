@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React from "react";
 import { useEffect } from "react";
 import {
   SafeAreaView,
@@ -11,51 +11,40 @@ import {
 import RNEventSource from "react-native-event-source";
 import { auctionsStore, auctionsActions } from "../stores/auctionsStore";
 import _ from "lodash";
+import Auction from "../components/Auction";
 
 function Market() {
   const auctionsState = auctionsStore((state) => state);
-  console.log("auctions", auctionsState.auctions);
+  // console.log("auctions", auctionsState.auctionsAreaOne);
 
-  /**스크롤 영역 #1, 영역 #2 랜덤으로 바꿔줌 */
-  const acutionsAreaOne = _.shuffle(auctionsState.auctions);
-  const acutionsAreaTwo = _.shuffle(auctionsState.auctions);
+  const auctionsAreaOne = auctionsState.auctionsAreaOne;
+  const auctionsAreaTwo = auctionsState.auctionsAreaTwo;
 
-  /**스크롤 영역 #1, 영역 #2의 index가 겹칠때 811로 업데이트 해줌 */
-  // auctionsState.auctions.forEach((action, index) => {
-  //   if (acutionsAreaOne[index].auctionId === acutionsAreaTwo[index].auctionId) {
-  //     acutionsAreaOne[index].viewCount = 811;
-  //     acutionsAreaTwo[index].viewCount = 811;
-  //   }
-  // });
-
-  const getData = useCallback(() => {
+  const getData = () => {
     try {
       const eventSource = new RNEventSource(
         "https://api.fleaauction.world/v2/sse/event"
       );
-      console.log("eventSource", eventSource);
 
       eventSource.addEventListener("sse.auction_viewed", function (event) {
-        console.log("data.one", event.lastEventId);
-        // console.log("data.data", event.data);
-        auctionsActions.auctionsPush(JSON.parse(event.data));
+        auctionsActions.auctionsSet(JSON.parse(event.data));
+        // console.log("auctionsSet", JSON.parse(event.data));
       });
     } catch (error) {
       console.error(error);
     }
-  }, []);
+  };
 
   useEffect(() => {
     getData();
   }, []);
 
-  /**pull-to-refresh -> 랜덤으로 순서 정렬 */
   const [refreshing, setRefreshing] = React.useState(false);
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
     setTimeout(() => {
       setRefreshing(false);
-      auctionsActions.auctionsPush([]);
+      auctionsActions.auctionsRefresh();
     }, 2000);
   }, []);
 
@@ -76,14 +65,8 @@ function Market() {
               horizontal={true}
               contentContainerStyle={{ alignItems: "center" }}
             >
-              {acutionsAreaOne.map((auction, index) => (
-                <View
-                  style={styles.content}
-                  key={`one.${auction.auctionId}.${index}`}
-                >
-                  <Text>작품 ID : {auction.auctionId}</Text>
-                  <Text>조회수 {auction.viewCount}</Text>
-                </View>
+              {auctionsAreaOne.map((auction, index) => (
+                <Auction key={index} auction={auction} />
               ))}
             </ScrollView>
           </View>
@@ -96,14 +79,8 @@ function Market() {
               horizontal={true}
               contentContainerStyle={{ alignItems: "center" }}
             >
-              {acutionsAreaTwo.map((auction, index) => (
-                <View
-                  style={styles.content}
-                  key={`two.${auction.auctionId}.${index}`}
-                >
-                  <Text>작품 ID : {auction.auctionId}</Text>
-                  <Text>조회수 {auction.viewCount}</Text>
-                </View>
+              {auctionsAreaTwo.map((auction, index) => (
+                <Auction key={index} auction={auction} />
               ))}
             </ScrollView>
           </View>
@@ -145,18 +122,6 @@ const styles = StyleSheet.create({
   contentWrapper: {
     height: 260,
     display: "flex",
-  },
-  content: {
-    width: 160,
-    height: 160,
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    borderColor: "#B3B8BD", //grey-5
-    borderWidth: 1,
-    borderRadius: 8,
-    margin: 8,
-    marginLeft: 16,
   },
 });
 export default Market;
